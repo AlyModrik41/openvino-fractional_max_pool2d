@@ -625,6 +625,7 @@ const std::unordered_map<std::string, CreatorFunction> get_supported_ops_ts() {
         {"aten::max_pool1d_with_indices", op::quantizable_op<op::translate_max_pool1d>},
         {"aten::max_pool2d", op::quantizable_op<op::translate_max_pool2d>},
         {"aten::max_pool2d_with_indices", op::quantizable_op<op::translate_max_pool2d>},
+        {"aten::fractional_max_pool2d",op::quantizable_op<op::translate_fractional_max_pool2d>},
         {"aten::max_pool3d", op::quantizable_op<op::translate_max_pool3d>},
         {"aten::max_pool3d_with_indices", op::quantizable_op<op::translate_max_pool3d>},
         {"aten::mean", op::quantizable_op<op::translate_mean>},
