@@ -23,6 +23,7 @@
 #include "utils.hpp"
 
 namespace ov {
+namespace std{
 namespace frontend {
 namespace pytorch {
 namespace op {
@@ -160,7 +161,53 @@ OutputVector translate_max_pool3d_fx(const NodeContext& context) {
     return {context.mark_node(make_list_construct(output))};
 };
 
+OutputVector translate_fractional_max_pool2d(const NodeContext& context){
+    
+    auto input=context.get_input(0);
+    auto kernel_size=context.const_input<Shape>(1);
+    auto input_shape=input.get_partial_shape();
+
+    Shape output_size;
+    if (!context.input_is_none(2)){
+        output_size=context.const_input<Shape>(2);
+    }
+    else{
+        auto ratio=context.const_input<vector<float>>(3);
+        output_size={
+            static_cast<size_t>(input_shape[2].get_length()*ratio[0]),
+            static_cast<size_t>(input_shape[3].get_length()*ratio[1])
+        };
+    }
+    auto strides=Strides{
+        static_cast<size_t>(input_shape[2].get_length()/output_size[0]),
+        static_cast<size_t>(input_shape[3].get_length()/output_size[1])
+    };
+
+    for (int d=0;d<2;d++){
+        auto in_dim = (d==0) ? input_shape[2].get_length() : input_shape[3].get_length();
+        auto kernel= kernel_size[d];
+        auto stride=strides[d];
+        auto actual_out=(in_dim-kernel)/stride +1;
+        PYTORCH_OP_CONVERSION_CHECK(actual_out==output_size[d],
+            "fractional_max_pool_2d: cannot approximate this shape combination. "
+            " Input "+ to_string(in_dim)+
+            " -> Output " + to_string(output_size[d])+
+            " doesn't map cleanly to a regular MaxPool. ");
+    }
+     auto mp = context.mark_node(std::make_shared<v8::MaxPool>(
+        input,
+        strides,
+        Strides{1, 1},
+        Shape{0, 0},
+        Shape{0, 0},
+        kernel_size,
+        RoundingType::FLOOR));
+
+    return {context.mark_node(make_list_construct(mp->outputs()))};
+};
+
 }  // namespace op
 }  // namespace pytorch
 }  // namespace frontend
 }  // namespace ov
+}
